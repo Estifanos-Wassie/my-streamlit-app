@@ -20,7 +20,8 @@ page = st.sidebar.selectbox(
 )
 
 # Load Dataset
-df = pd.read_csv("diabetes.csv")
+df = pd.read_csv("diabetes.csv", sep="\t")  
+df = df.loc[:, ~df.columns.duplicated()]   
 
 st.title("Diabetes Dataset Analysis")
 
@@ -54,17 +55,20 @@ elif page == "Visualization":
         ["Bar Chart", "Line Chart", "Correlation Heatmap"]
     )
 
+    # Ensure selected columns exist and are numeric for plotting
+    cols_to_plot = [col for col in [col_x, col_y] if col in df.columns]
+
     with tab1:
         st.subheader("Bar Chart")
         st.bar_chart(
-            df[[col_x, col_y]].sort_values(by=col_x),
+            df[cols_to_plot].sort_values(by=col_x),
             use_container_width=True
         )
 
     with tab2:
         st.subheader("Line Chart")
         st.line_chart(
-            df[[col_x, col_y]].sort_values(by=col_x),
+            df[cols_to_plot].sort_values(by=col_x),
             use_container_width=True
         )
 
