@@ -19,8 +19,8 @@ page = st.sidebar.selectbox(
     ["Introduction", "Visualization"]
 )
 
-# Load Dataset
-df = pd.read_csv("diabetes.csv", sep="\t")  
+# Load Dataset - FIXED: removed sep="\t" since it's a comma-separated file
+df = pd.read_csv("diabetes.csv")  
 df = df.loc[:, ~df.columns.duplicated()]   
 
 st.title("Diabetes Dataset Analysis")
@@ -47,39 +47,43 @@ if page == "Introduction":
 # PAGE 2 — VISUALIZATION
 elif page == "Visualization":
     st.subheader("Data Visualization")
+    
+    # Check if DataFrame has at least 2 columns
+    if len(df.columns) < 2:
+        st.error("Dataset needs at least 2 columns for visualization")
+    else:
+        col_x = st.selectbox("Select X-axis variable", df.columns, index=0)
+        col_y = st.selectbox("Select Y-axis variable", df.columns, index=1)
 
-    col_x = st.selectbox("Select X-axis variable", df.columns, index=0)
-    col_y = st.selectbox("Select Y-axis variable", df.columns, index=1)
-
-    tab1, tab2, tab3 = st.tabs(
-        ["Bar Chart", "Line Chart", "Correlation Heatmap"]
-    )
-
-    # Ensure selected columns exist and are numeric for plotting
-    cols_to_plot = [col for col in [col_x, col_y] if col in df.columns]
-
-    with tab1:
-        st.subheader("Bar Chart")
-        st.bar_chart(
-            df[cols_to_plot].sort_values(by=col_x),
-            use_container_width=True
+        tab1, tab2, tab3 = st.tabs(
+            ["Bar Chart", "Line Chart", "Correlation Heatmap"]
         )
 
-    with tab2:
-        st.subheader("Line Chart")
-        st.line_chart(
-            df[cols_to_plot].sort_values(by=col_x),
-            use_container_width=True
-        )
+        cols_to_plot = [col for col in [col_x, col_y] if col in df.columns]
 
-    with tab3:
-        st.subheader("Correlation Matrix")
-        df_numeric = df.select_dtypes(include=np.number)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.heatmap(
-            df_numeric.corr(),
-            annot=True,
-            fmt=".2f",
-            cmap="coolwarm"
-        )
-        st.pyplot(fig)
+        with tab1:
+            st.subheader("Bar Chart")
+            st.bar_chart(
+                df[cols_to_plot].sort_values(by=col_x),
+                use_container_width=True
+            )
+
+        with tab2:
+            st.subheader("Line Chart")
+            st.line_chart(
+                df[cols_to_plot].sort_values(by=col_x),
+                use_container_width=True
+            )
+
+        with tab3:
+            st.subheader("Correlation Matrix")
+            df_numeric = df.select_dtypes(include=np.number)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.heatmap(
+                df_numeric.corr(),
+                annot=True,
+                fmt=".2f",
+                cmap="coolwarm",
+                ax=ax
+            )
+            st.pyplot(fig)
