@@ -1,4 +1,3 @@
-# Import Libraries
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -6,27 +5,38 @@ import streamlit as st
 import numpy as np
 
 st.set_page_config(
-    page_title="Diabetes Data Dashboard",
+    page_title="Diabetes Health Dashboard 🩺",
     layout="centered",
     page_icon="🩺",
 )
 
-# Sidebar
-st.sidebar.title("Diabetes Analysis Dashboard")
-
+st.sidebar.title("Diabetes Health Dashboard 🩺")
 page = st.sidebar.selectbox(
     "Select Page",
-    ["Introduction", "Visualization"]
+    ["Introduction 📘", "Data Exploration 📊", "Visualization 📈"]
 )
 
-# Load Dataset - FIXED: removed sep="\t" since it's a comma-separated file
-df = pd.read_csv("diabetes.csv")  
-df = df.loc[:, ~df.columns.duplicated()]   
+st.image("diabetes_image.png")
+st.write(" ")
+st.write(" ")
+st.write(" ")
 
-st.title("Diabetes Dataset Analysis")
+@st.cache_data
+def load_data():
+    df = pd.read_csv("diabetes.csv")
+    df.columns = df.columns.str.strip()
+    df = df.loc[:, ~df.columns.duplicated()]
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].astype(str)
+    for col in df.select_dtypes(include=[np.number]).columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    return df
 
-# PAGE 1 — INTRODUCTION
-if page == "Introduction":
+df = load_data()
+
+st.title("Diabetes Dataset Analysis 🩺")
+
+if page == "Introduction 📘":
     st.subheader("Data Preview")
     rows = st.slider("Select number of rows to display", 5, 20, 5)
     st.dataframe(df.head(rows))
@@ -38,52 +48,78 @@ if page == "Introduction":
     if missing.sum() == 0:
         st.success("No missing values found")
     else:
-        st.warning("Dataset contains missing values")
+        st.warning(f"Dataset contains {missing.sum()} missing values")
 
-    st.subheader("Summary Statistics")
-    if st.button("Show Describe Table"):
+    st.subheader("Dataset Information")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Rows", df.shape[0])
+    with col2:
+        st.metric("Total Columns", df.shape[1])
+    with col3:
+        st.metric("Missing Values", int(missing.sum()))
+
+    if st.button("Show Summary Statistics"):
         st.dataframe(df.describe())
 
-# PAGE 2 — VISUALIZATION
-elif page == "Visualization":
-    st.subheader("Data Visualization")
-    
-    # Check if DataFrame has at least 2 columns
-    if len(df.columns) < 2:
-        st.error("Dataset needs at least 2 columns for visualization")
-    else:
-        col_x = st.selectbox("Select X-axis variable", df.columns, index=0)
-        col_y = st.selectbox("Select Y-axis variable", df.columns, index=1)
+elif page == "Data Exploration 📊":
+    st.subheader("Dataset Overview")
+    st.dataframe(df)
 
-        tab1, tab2, tab3 = st.tabs(
-            ["Bar Chart", "Line Chart", "Correlation Heatmap"]
-        )
+    st.subheader("Data Types")
+    st.write(df.dtypes)
 
-        cols_to_plot = [col for col in [col_x, col_y] if col in df.columns]
+    st.subheader("Summary Statistics")
+    st.dataframe(df.describe())
 
-        with tab1:
-            st.subheader("Bar Chart")
-            st.bar_chart(
-                df[cols_to_plot].sort_values(by=col_x),
-                use_container_width=True
-            )
+elif page == "Visualization 📈":
+    st.subheader("Interactive Visualizations")
 
-        with tab2:
-            st.subheader("Line Chart")
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    tab1, tab2, tab3 = st.tabs(
+        ["Bar Chart 📊", "Line Chart 📈", "Correlation Heatmap 🔥"]
+    )
+
+    with tab1:
+        col_x = st.selectbox("Select X-axis variable", numeric_cols, key="bar_x")
+        col_y = st.selectbox("Select Y-axis variable", numeric_cols, key="bar_y")
+
+        if col_x and col_y:
+            fig_bar, ax_bar = plt.subplots(figsize=(10, 6))
+            sns.barplot(data=df, x=col_x, y=col_y, ax=ax_bar)
+            plt.xticks(rotation=45)
+            st.pyplot(fig_bar)
+
+    with tab2:
+        col_x = st.selectbox("Select X variable", numeric_cols, key="line_x")
+        col_y = st.selectbox("Select Y variable", numeric_cols, key="line_y")
+
+        if col_x != col_y:
+            df_sorted = df.sort_values(by=col_x)
             st.line_chart(
-                df[cols_to_plot].sort_values(by=col_x),
+                df_sorted.set_index(col_x)[col_y],
                 use_container_width=True
             )
+        else:
+            st.warning("Please select two different variables")
 
-        with tab3:
-            st.subheader("Correlation Matrix")
-            df_numeric = df.select_dtypes(include=np.number)
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sns.heatmap(
-                df_numeric.corr(),
-                annot=True,
-                fmt=".2f",
-                cmap="coolwarm",
-                ax=ax
-            )
-            st.pyplot(fig)
+    with tab3:
+        df_numeric = df.select_dtypes(include=np.number)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.heatmap(
+            df_numeric.corr(),
+            annot=True,
+            fmt=".2f",
+            cmap="coolwarm",
+            ax=ax
+        )
+        st.pyplot(fig)
+
+st.sidebar.markdown("---")
+st.sidebar.info("""
+This dashboard explores the Diabetes dataset with:
+- Data preview and statistics
+- Interactive charts
+- Correlation analysis
+""")
